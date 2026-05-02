@@ -1,0 +1,100 @@
+<?php
+
+namespace App\Http\Livewire\Chat;
+
+use App\Events\MessageSent;
+use App\Models\User;
+use App\Models\Message;
+use Livewire\Component;
+use App\Models\Conversation;
+
+class Chatbox extends Component
+{
+    public $selectedConversation;
+    public $receiver;
+    public $messages;
+    public $paginateVar = 10;
+    public $height;
+
+    // protected $listeners = [
+    //     'loadConversation' => 'loadConversation',
+    //     'pushMessage' => 'pushMessage',
+    //     'loadmore' => 'loadmore',
+    //     'updateHeight' => 'updateHeight',
+    // ];
+
+    public  function getListeners(){
+        $auth_id = auth()->user()->id;
+       // dd($auth_id);
+        return [
+            "echo-private:chat.{$auth_id},MessageSent"=>'broadcastedMessageReceived',
+            'loadConversation' => 'loadConversation',
+            'pushMessage' => 'pushMessage',
+            'loadmore' => 'loadmore',
+            'updateHeight' => 'updateHeight',
+        ];
+    }
+
+    public function broadcastedMessageReceived($event)
+    {
+        dd("zdr");      
+        $broadcastedMessage = Message::find($event['message']);
+
+        if($this->selectedConversation)
+        {
+            
+        }
+    }
+
+
+    public function pushMessage($messageId)
+    {
+        $newMessage = Message::find($messageId);
+        $this->messages->push($newMessage);
+
+        $this->dispatchBrowserEvent('rowChatToBottom');
+    }
+
+    function updateHeight($height)
+    {
+       //dd($height);
+        //$this->height = $height;
+    }
+
+    function loadmore()
+    {
+        //dd('top reached');
+        $this->paginateVar = $this->paginateVar + 10;
+
+        $this->messages_count = Message::where('conversation_id', $this->selectedConversation->id)->count();
+
+        $this->messages = Message::where('conversation_id', $this->selectedConversation->id)
+            ->skip($this->messages_count - $this->paginateVar)
+            ->take($this->paginateVar)->get();
+
+            $height = $this->height;
+            $this->dispatchBrowserEvent('updatedHeight', ($height));
+    }
+
+    public function loadConversation(Conversation $conversation, User $receiver)
+    {
+
+        //  dd($conversation, $receiver);
+        $this->selectedConversation = $conversation;
+        $this->receiverInstance = $receiver;
+
+        $this->messages_count = Message::where('conversation_id', $this->selectedConversation->id)->count();
+
+        $this->messages = Message::where('conversation_id', $this->selectedConversation->id)
+            ->skip($this->messages_count - $this->paginateVar)
+            ->take($this->paginateVar)->get();
+
+        $this->dispatchBrowserEvent('chatSelected');
+        $this->dispatchBrowserEvent('rowChatToBottom');
+    }
+
+    public function render()
+    {
+        return view('livewire.chat.chatbox');
+    }
+}
